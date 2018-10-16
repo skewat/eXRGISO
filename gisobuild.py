@@ -25,7 +25,7 @@ import commands
 import stat
 import pprint
 
-__version__ = '0.9'
+__version__ = '0.10'
 GISO_PKG_FMT_VER = 1.0
 
 try:
@@ -55,6 +55,7 @@ DEFAULT_RPM_PATH = 'giso/<rpms>'
 SIGNED_RPM_PATH =  'giso/boot/initrd.img/<rpms>'
 SIGNED_NCS5500_RPM_PATH =  'giso/boot/initrd.img/iso/system_image.iso/boot/initrd.img/<rpms>'
 SIGNED_651_NCS5500_RPM_PATH = 'giso/boot/initrd.img/iso/system_image.iso/<rpms>'
+OPTIMIZE_CAPABLE = os.path.exists('/sw/packages/jam_IOX/signing/xr_sign')
 
 def run_cmd(cmd):
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, 
@@ -1092,7 +1093,7 @@ def system_resource_check(args):
         logger.error("\nError: System requirements check [FAIL]")
         sys.exit(-1)
 
-    elif os.getuid() != 0 and not args.optimize :
+    elif os.getuid() != 0 and (OPTIMIZE_CAPABLE and not args.optimize) :
         logger.error("\nError: User does not have root priviledges")
         sys.exit(-1)
 
@@ -1281,7 +1282,7 @@ class Giso:
         self.bundle_iso = Iso() 
         self.bundle_iso.set_iso_info(iso_path)
         plat = self.get_bundle_iso_platform_name()
-        if not args.optimize:
+        if OPTIMIZE_CAPABLE and not args.optimize:
             self.giso_rpm_path = DEFAULT_RPM_PATH
         elif plat in Giso.NESTED_ISO_PLATFORMS :
             # This was interim change for 651 release for fretta only
@@ -1599,7 +1600,7 @@ class Giso:
                                             Giso.SMU_CONFIG_SUMMARY_FILE))
 
 
-            if args.optimize:
+            if OPTIMIZE_CAPABLE and args.optimize:
                 # If optimised GISO, 
                 # 1. push RPMs in system_image
                 # 2. recreate initrd
@@ -1741,13 +1742,13 @@ def parsecli():
                         required=False, action='append',
                         help='Golden ISO Label')
 
+    parser.add_argument('-m', '--migration', dest='migTar', action='store_true',
+                        help='To build Migration tar only for ASR9k')
+
     if os.path.exists('/sw/packages/jam_IOX/signing/xr_sign'):
-        parser.add_argument('-m', '--migration', dest='migTar', action='store_true',
-                    help='To build Migration tar only for ASR9k')
         parser.add_argument('-o', '--optimize', dest='optimize', action='store_true',
                     help='Optimize GISO by recreating and resigning initrd')
     
-
     parser.add_argument('-x', '--x86_only', dest='x86_only', action='store_true',
                         help='Use only x86_64 rpms even if arm is applicable for the platform')
 
